@@ -7,21 +7,22 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 include "../Includes/dbcon.php";
 include "auth.php";
 
-validateToken($conn);
+$user = validateToken($conn);
+requireRole($user, ["Administrator", "ClassTeacher"]);
 
-$query = "SELECT Id, className FROM tblclass ORDER BY className ASC";
+$query = "SELECT Id, className FROM tblclass ORDER BY Id DESC";
 $result = $conn->query($query);
 
-$classes = array();
+$data = array();
 
 if ($result) {
     while ($row = $result->fetch_assoc()) {
-        $classes[] = $row;
+        $data[] = $row;
     }
 
     echo json_encode([
         "success" => true,
-        "data" => $classes
+        "data" => $data
     ]);
 } else {
     echo json_encode([

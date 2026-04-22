@@ -8,6 +8,7 @@ include "../Includes/dbcon.php";
 include "auth.php";
 
 $user = validateToken($conn);
+requireRole($user, ["Administrator", "ClassTeacher"]);
 
 $query = "
 SELECT 
@@ -36,8 +37,6 @@ if ($result) {
 
     echo json_encode([
         "success" => true,
-        "message" => "Students fetched successfully",
-        "authorized_user" => $user,
         "data" => $students
     ]);
 } else {

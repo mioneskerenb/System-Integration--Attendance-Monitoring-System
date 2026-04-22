@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET");
+header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 include "../Includes/dbcon.php";
@@ -10,36 +10,31 @@ include "auth.php";
 $user = validateToken($conn);
 requireRole($user, ["Administrator"]);
 
-$query = "
-SELECT 
-    ca.Id,
-    c.className,
-    ca.classArmName,
-    ca.isAssigned
-FROM tblclassarms ca
-LEFT JOIN tblclass c ON ca.classId = c.Id
-ORDER BY ca.Id DESC
-";
+$id = $_POST['id'] ?? '';
 
-$result = $conn->query($query);
+if (empty($id)) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Id is required"
+    ]);
+    exit();
+}
 
-$data = array();
+$stmt = $conn->prepare("DELETE FROM tblclass WHERE Id = ?");
+$stmt->bind_param("i", $id);
 
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
-
+if ($stmt->execute()) {
     echo json_encode([
         "success" => true,
-        "data" => $data
+        "message" => "Class deleted successfully"
     ]);
 } else {
     echo json_encode([
         "success" => false,
-        "message" => "Failed to fetch class arms"
+        "message" => "Failed to delete class"
     ]);
 }
 
+$stmt->close();
 $conn->close();
 ?>

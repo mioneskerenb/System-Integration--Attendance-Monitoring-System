@@ -40,9 +40,22 @@ $result = $stmt->get_result();
 if ($row = $result->fetch_assoc()) {
     $token = bin2hex(random_bytes(32));
 
+    $deleteOld = $conn->prepare("DELETE FROM api_tokens WHERE user_id = ? AND user_type = ?");
+    $deleteOld->bind_param("is", $row['Id'], $userType);
+    $deleteOld->execute();
+    $deleteOld->close();
+
     $insertToken = $conn->prepare("INSERT INTO api_tokens (user_id, user_type, token) VALUES (?, ?, ?)");
     $insertToken->bind_param("iss", $row['Id'], $userType, $token);
-    $insertToken->execute();
+
+    if (!$insertToken->execute()) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Failed to save token"
+        ]);
+        exit();
+    }
+
     $insertToken->close();
 
     echo json_encode([

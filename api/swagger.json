@@ -14,7 +14,7 @@
     }
   },
   "paths": {
-    "/Student-Attendance-System01-main/Student-Attendance-System01-main/api/login.php": {
+    "/Student-Attendance-System01-main/api/login.php": {
       "post": {
         "summary": "Login user",
         "security": [],
@@ -40,7 +40,7 @@
         }
       }
     },
-    "/Student-Attendance-System01-main/Student-Attendance-System01-main/api/students.php": {
+    "/Student-Attendance-System01-main/api/students.php": {
       "get": {
         "summary": "Get students",
         "security": [

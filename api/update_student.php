@@ -10,6 +10,7 @@ include "auth.php";
 $user = validateToken($conn);
 requireRole($user, ["Administrator"]);
 
+$id = $_POST['id'] ?? '';
 $firstName = $_POST['firstName'] ?? '';
 $lastName = $_POST['lastName'] ?? '';
 $otherName = $_POST['otherName'] ?? '';
@@ -18,6 +19,7 @@ $classId = $_POST['classId'] ?? '';
 $classArmId = $_POST['classArmId'] ?? '';
 
 if (
+    empty($id) ||
     empty($firstName) ||
     empty($lastName) ||
     empty($admissionNumber) ||
@@ -31,8 +33,8 @@ if (
     exit();
 }
 
-$checkStmt = $conn->prepare("SELECT Id FROM tblstudents WHERE admissionNumber = ?");
-$checkStmt->bind_param("s", $admissionNumber);
+$checkStmt = $conn->prepare("SELECT Id FROM tblstudents WHERE admissionNumber = ? AND Id <> ?");
+$checkStmt->bind_param("si", $admissionNumber, $id);
 $checkStmt->execute();
 $checkResult = $checkStmt->get_result();
 
@@ -47,18 +49,18 @@ if ($checkResult->num_rows > 0) {
 }
 $checkStmt->close();
 
-$stmt = $conn->prepare("INSERT INTO tblstudents (firstName, lastName, otherName, admissionNumber, classId, classArmId, dateCreated) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-$stmt->bind_param("ssssii", $firstName, $lastName, $otherName, $admissionNumber, $classId, $classArmId);
+$stmt = $conn->prepare("UPDATE tblstudents SET firstName=?, lastName=?, otherName=?, admissionNumber=?, classId=?, classArmId=? WHERE Id=?");
+$stmt->bind_param("ssssiii", $firstName, $lastName, $otherName, $admissionNumber, $classId, $classArmId, $id);
 
 if ($stmt->execute()) {
     echo json_encode([
         "success" => true,
-        "message" => "Student added successfully"
+        "message" => "Student updated successfully"
     ]);
 } else {
     echo json_encode([
         "success" => false,
-        "message" => "Failed to add student"
+        "message" => "Failed to update student"
     ]);
 }
 
