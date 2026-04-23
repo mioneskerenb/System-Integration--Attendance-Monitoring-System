@@ -10,16 +10,37 @@ include "auth.php";
 $user = validateToken($conn);
 requireRole($user, ["Administrator"]);
 
-$query = "
-SELECT 
-    ca.Id,
-    c.className,
-    ca.classArmName,
-    ca.isAssigned
-FROM tblclassarms ca
-LEFT JOIN tblclass c ON ca.classId = c.Id
-ORDER BY ca.Id DESC
-";
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+if ($search != '') {
+    $search = mysqli_real_escape_string($conn, $search);
+
+    $query = "
+    SELECT 
+        ca.Id,
+        ca.classId,
+        c.className,
+        ca.classArmName,
+        ca.isAssigned
+    FROM tblclassarms ca
+    LEFT JOIN tblclass c ON ca.classId = c.Id
+    WHERE c.className LIKE '%$search%'
+       OR ca.classArmName LIKE '%$search%'
+    ORDER BY ca.Id DESC
+    ";
+} else {
+    $query = "
+    SELECT 
+        ca.Id,
+        ca.classId,
+        c.className,
+        ca.classArmName,
+        ca.isAssigned
+    FROM tblclassarms ca
+    LEFT JOIN tblclass c ON ca.classId = c.Id
+    ORDER BY ca.Id DESC
+    ";
+}
 
 $result = $conn->query($query);
 
