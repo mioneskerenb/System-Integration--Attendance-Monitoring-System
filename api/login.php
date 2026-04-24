@@ -6,72 +6,141 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 include "../Includes/dbcon.php";
 
-$username = $_POST['username'] ?? '';
-$password = $_POST['password'] ?? '';
-$userType = $_POST['userType'] ?? 'Administrator';
+$username = isset($_POST['username']) ? trim($_POST['username']) : '';
+$password = isset($_POST['password']) ? trim($_POST['password']) : '';
+$userType = isset($_POST['userType']) ? trim($_POST['userType']) : '';
 
-if (empty($username) || empty($password)) {
+if ($username == '' || $password == '' || $userType == '') {
     echo json_encode([
         "success" => false,
-        "message" => "Username and password are required"
+        "message" => "Username, password, and user type are required."
     ]);
     exit();
 }
 
-$password = strtoupper(md5($password));
+/*
+|--------------------------------------------------------------------------
+| ADMIN LOGIN
+|--------------------------------------------------------------------------
+| tbladmin columns:
+| Id, firstName, lastName, emailAddress, password
+|--------------------------------------------------------------------------
+*/
+if ($userType == "Administrator") {
 
-if ($userType === "Administrator") {
-    $stmt = $conn->prepare("SELECT Id, firstName, lastName, emailAddress FROM tbladmin WHERE emailAddress = ? AND password = ?");
-    $stmt->bind_param("ss", $username, $password);
-} elseif ($userType === "ClassTeacher") {
-    $stmt = $conn->prepare("SELECT Id, firstName, lastName, emailAddress, classId, classArmId FROM tblclassteacher WHERE emailAddress = ? AND password = ?");
-    $stmt->bind_param("ss", $username, $password);
-} else {
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid user type"
-    ]);
-    exit();
-}
+    $email = mysqli_real_escape_string($conn, $username);
+    $hashedPassword = md5($password);
 
-$stmt->execute();
-$result = $stmt->get_result();
+    $query = "SELECT * FROM tbladmin 
+              WHERE emailAddress = '$email' 
+              AND password = '$hashedPassword'
+              LIMIT 1";
 
-if ($row = $result->fetch_assoc()) {
-    $token = bin2hex(random_bytes(32));
+    $result = mysqli_query($conn, $query);
 
-    $deleteOld = $conn->prepare("DELETE FROM api_tokens WHERE user_id = ? AND user_type = ?");
-    $deleteOld->bind_param("is", $row['Id'], $userType);
-    $deleteOld->execute();
-    $deleteOld->close();
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $userId = $row['Id'];
 
-    $insertToken = $conn->prepare("INSERT INTO api_tokens (user_id, user_type, token) VALUES (?, ?, ?)");
-    $insertToken->bind_param("iss", $row['Id'], $userType, $token);
+        mysqli_query($conn, "DELETE FROM api_tokens 
+                             WHERE user_id = '$userId' 
+                             AND user_type = 'Administrator'");
 
-    if (!$insertToken->execute()) {
+        $token = bin2hex(random_bytes(32));
+
+        mysqli_query($conn, "INSERT INTO api_tokens 
+                             (user_id, user_type, token, created_at)
+                             VALUES 
+                             ('$userId', 'Administrator', '$token', NOW())");
+
         echo json_encode([
-            "success" => false,
-            "message" => "Failed to save token"
+            "success" => true,
+            "message" => "Login successful.",
+            "token" => $token,
+            "userType" => "Administrator",
+            "data" => [
+                "Id" => $row['Id'],
+                "firstName" => $row['firstName'],
+                "lastName" => $row['lastName'],
+                "emailAddress" => $row['emailAddress']
+            ]
         ]);
         exit();
     }
 
-    $insertToken->close();
-
-    echo json_encode([
-        "success" => true,
-        "message" => "Login successful",
-        "token" => $token,
-        "userType" => $userType,
-        "data" => $row
-    ]);
-} else {
     echo json_encode([
         "success" => false,
-        "message" => "Invalid username or password"
+        "message" => "Invalid administrator email or password."
     ]);
+    exit();
 }
 
-$stmt->close();
-$conn->close();
+/*
+|--------------------------------------------------------------------------
+| CLASS TEACHER LOGIN
+|--------------------------------------------------------------------------
+*/
+if ($userType == "ClassTeacher") {
+
+    $username = mysqli_real_escape_string($conn, $username);
+    $hashedPassword = md5($password);
+
+    $query = "SELECT * FROM tblclassteacher 
+              WHERE emailAddress = '$username' 
+              AND password = '$hashedPassword'
+              LIMIT 1";
+
+    $result = mysqli_query($conn, $query);
+
+    if (!$result || mysqli_num_rows($result) == 0) {
+        $query = "SELECT * FROM tblclassteacher 
+                  WHERE username = '$username' 
+                  AND password = '$hashedPassword'
+                  LIMIT 1";
+
+        $result = mysqli_query($conn, $query);
+    }
+
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $userId = $row['Id'];
+
+        mysqli_query($conn, "DELETE FROM api_tokens 
+                             WHERE user_id = '$userId' 
+                             AND user_type = 'ClassTeacher'");
+
+        $token = bin2hex(random_bytes(32));
+
+        mysqli_query($conn, "INSERT INTO api_tokens 
+                             (user_id, user_type, token, created_at)
+                             VALUES 
+                             ('$userId', 'ClassTeacher', '$token', NOW())");
+
+        echo json_encode([
+            "success" => true,
+            "message" => "Login successful.",
+            "token" => $token,
+            "userType" => "ClassTeacher",
+            "data" => [
+                "Id" => $row['Id'],
+                "firstName" => isset($row['firstName']) ? $row['firstName'] : "",
+                "lastName" => isset($row['lastName']) ? $row['lastName'] : "",
+                "emailAddress" => isset($row['emailAddress']) ? $row['emailAddress'] : "",
+                "username" => isset($row['username']) ? $row['username'] : ""
+            ]
+        ]);
+        exit();
+    }
+
+    echo json_encode([
+        "success" => false,
+        "message" => "Invalid class teacher username/email or password."
+    ]);
+    exit();
+}
+
+echo json_encode([
+    "success" => false,
+    "message" => "Invalid user type."
+]);
 ?>
