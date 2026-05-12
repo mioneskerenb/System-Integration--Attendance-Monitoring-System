@@ -11,40 +11,41 @@ $user = validateToken($conn);
 requireRole($user, ["Administrator"]);
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$classId = isset($_GET['classId']) ? intval($_GET['classId']) : 0;
+
+$where = [];
+
+if ($classId > 0) {
+    $where[] = "ca.classId = '$classId'";
+}
 
 if ($search != '') {
     $search = mysqli_real_escape_string($conn, $search);
-
-    $query = "
-    SELECT 
-        ca.Id,
-        ca.classId,
-        c.className,
-        ca.classArmName,
-        ca.isAssigned
-    FROM tblclassarms ca
-    LEFT JOIN tblclass c ON ca.classId = c.Id
-    WHERE c.className LIKE '%$search%'
-       OR ca.classArmName LIKE '%$search%'
-    ORDER BY ca.Id DESC
-    ";
-} else {
-    $query = "
-    SELECT 
-        ca.Id,
-        ca.classId,
-        c.className,
-        ca.classArmName,
-        ca.isAssigned
-    FROM tblclassarms ca
-    LEFT JOIN tblclass c ON ca.classId = c.Id
-    ORDER BY ca.Id DESC
-    ";
+    $where[] = "(c.className LIKE '%$search%' OR ca.classArmName LIKE '%$search%')";
 }
+
+$whereSql = "";
+
+if (count($where) > 0) {
+    $whereSql = "WHERE " . implode(" AND ", $where);
+}
+
+$query = "
+SELECT 
+    ca.Id,
+    ca.classId,
+    c.className,
+    ca.classArmName,
+    ca.isAssigned
+FROM tblclassarms ca
+LEFT JOIN tblclass c ON ca.classId = c.Id
+$whereSql
+ORDER BY ca.Id DESC
+";
 
 $result = $conn->query($query);
 
-$data = array();
+$data = [];
 
 if ($result) {
     while ($row = $result->fetch_assoc()) {
@@ -58,7 +59,7 @@ if ($result) {
 } else {
     echo json_encode([
         "success" => false,
-        "message" => "Failed to fetch class arms"
+        "message" => "Failed to fetch class arms."
     ]);
 }
 

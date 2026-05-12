@@ -13,20 +13,22 @@ $students = array();
 
 if ($user['user_type'] === "Administrator") {
     $query = "
-    SELECT 
-        s.Id,
-        s.firstName,
-        s.lastName,
-        s.otherName,
-        s.admissionNumber,
-        c.className,
-        ca.classArmName,
-        s.dateCreated
-    FROM tblstudents s
-    LEFT JOIN tblclass c ON s.classId = c.Id
-    LEFT JOIN tblclassarms ca ON s.classArmId = ca.Id
-    ORDER BY s.Id DESC
-    ";
+SELECT 
+    s.Id,
+    s.firstName,
+    s.lastName,
+    s.otherName,
+    s.admissionNumber,
+    s.classId,
+    s.classArmId,
+    c.className,
+    ca.classArmName,
+    s.dateCreated
+FROM tblstudents s
+LEFT JOIN tblclass c ON c.Id = s.classId
+LEFT JOIN tblclassarms ca ON ca.Id = s.classArmId
+ORDER BY s.Id DESC
+";
     
     $result = $conn->query($query);
 }
